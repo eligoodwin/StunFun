@@ -1,54 +1,23 @@
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class StunFun {
-    private static Set<User> userList = new HashSet<>();
-
+    private static List<User> userList = new ArrayList<>();
     public static void main(String[] Args) throws IOException {
+        userList.add(new User("Anna"));
+        userList.add(new User("Bob"));
+
         ServerSocket listener = new ServerSocket(8080);
         try {
             while (true) {
                 Socket clientSocket = listener.accept();
-
-                SocketAddress clientSocketAddress = clientSocket.getRemoteSocketAddress();
-                String[] socketAddressInfo = getAddressInfo(clientSocketAddress.toString());
-                //get info
-                BufferedReader bufferedReader = getBuffer(clientSocket);
-                String username = bufferedReader.readLine();
-                String parsedAddress = String.format("IP Address: %s\t Port: %s", socketAddressInfo[1], socketAddressInfo[2]);
-                String message = String.format("Client Address: %s\tDate: %s", parsedAddress, new Date().toString());
-                try {
-                    PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-                    out.println(message);
-
-                    System.out.printf("Connection info: %s\t%s\n", username, parsedAddress);
-                    //save user
-                    userList.add(new User(Integer.parseInt(socketAddressInfo[2]), socketAddressInfo[1], username));
-
-                    //wait for user info request
-                    bufferedReader = getBuffer(clientSocket);
-                    String targetUser = bufferedReader.readLine();
-                    System.out.printf("User:\t%s whats to initiate chat with:\t%s\n", username, targetUser);
-                    String userInfo = findByUsername(targetUser);
-                    if(userInfo == null){
-                        out.println("User not found");
-                        System.out.println("User could not be found");
-                        clientSocket.close();
-                    }
-                    else{
-                        out.println(userInfo);
-                    }
-
-                } finally {
-                    clientSocket.close();
-                }
+                new ClientThread(clientSocket, userList).start();
             }
         }
         finally{
@@ -70,20 +39,69 @@ public class StunFun {
         return new BufferedReader((new InputStreamReader(inputStream)));
     }
 
-    private static String findByUsername(String username){
-        for(User user : userList){
-            if(user.getUsername().equals(username)){
-                return user.getAddress();
+
+    static class ClientThread extends Thread {
+        private Socket clientSocket;
+        private List<User> userList;
+
+        public ClientThread(Socket client, List<User> users) {
+            this.clientSocket = client;
+            this.userList = users;
+        }
+
+        @Override
+        public void run() {
+            super.run();
+            SocketAddress clientSocketAddress = clientSocket.getRemoteSocketAddress();
+            String[] socketAddressInfo = getAddressInfo(clientSocketAddress.toString());
+            //get info
+            BufferedReader bufferedReader = null;
+            try {
+                bufferedReader = getBuffer(clientSocket);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
+            String username = null;
+            try {
+                username = bufferedReader.readLine();
+                System.out.printf("Requesting User: %s\n", username);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            //1. display username and address info
+            String message = String.format("User: %s ipAddress: %s Port: %s", username, socketAddressInfo[1], socketAddressInfo[2]);
+            try {
+                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+                out.println(message);
+                System.out.printf("Connection info: %s\n", message);
+                //2. put info into into anna/bob user
+                if (username.equals("Anna")) {
+                    userList.get(0).setIpAddress(socketAddressInfo[1]);
+                    userList.get(0).setPort(Integer.parseInt(socketAddressInfo[2]));
+                } else {
+                    userList.get(1).setIpAddress(socketAddressInfo[1]);
+                    userList.get(1).setPort(Integer.parseInt(socketAddressInfo[2]));
+                }
+                //3. parse request
+                bufferedReader = getBuffer(clientSocket);
+                String request = bufferedReader.readLine();
+                if(request.equals("Bob")){
+                    out.println(userList.get(1).getAddress());
+                }
+                else{
+                    out.println(userList.get(0).getAddress());
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                clientSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         }
-        return null;
+
     }
-
-    private static void itrThroughList(){
-        for(User user : userList){
-            System.out.println(user.toString());
-        }
-    }
-
-
 }

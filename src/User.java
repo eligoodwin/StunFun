@@ -1,12 +1,10 @@
 public class User {
-    private final int port;
-    private final String username;
-    private final String ipAddress;
+    private  int port;
+    private String username;
+    private String ipAddress;
 
-    public User(int port, String ipAddress, String username) {
-        this.port = port;
+    public User(String username) {
         this.username = username;
-        this.ipAddress = ipAddress;
     }
 
     public int getPort() {
@@ -19,6 +17,18 @@ public class User {
 
     public String getIpAddress() {
         return ipAddress;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
     }
 
     @Override
